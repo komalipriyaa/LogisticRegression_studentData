@@ -1,0 +1,77 @@
+import numpy as np
+from sklearn.model_selection import KFold, train_test_split
+import pandas as pd
+from sklearn.linear_model import LogisticRegression
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn import metrics
+
+from google.colab import files
+import io
+uploaded = files.upload()
+
+data = pd.read_csv(io.BytesIO(uploaded['student-mat.csv']), header=0)
+colNames = data.columns.tolist()
+
+def log(X, Y):
+    kf = KFold(n_splits=10)
+    kf.get_n_splits(X)
+    performance = []
+    for train_index, test_index in kf.split(X):
+        xTrain, xTest = X[train_index], X[test_index]
+        yTrain, yTest = Y[train_index], Y[test_index]
+
+        lr = LogisticRegression()
+        lr.fit(xTrain, yTrain)
+        yPred = lr.predict(xTest)
+        performance.append(metrics.accuracy_score(yTest, yPred))
+
+    Xtrain, Xtest, Ytrain, Ytest = train_test_split(X, Y, test_size=0.25, random_state=42)
+    l = LogisticRegression()
+    l.fit(Xtrain, Ytrain)
+    ypred = l.predict(Xtest)
+
+    #return performance, metrics.classification_report(Ytest, ypred)
+    return performance, metrics.accuracy_score(Ytest, ypred)
+    
+from sklearn.feature_selection import SelectKBest, f_classif
+from sklearn import preprocessing
+
+def convert(data):
+    le = preprocessing.LabelEncoder()
+    col = data.columns.tolist()
+    for colName in col:
+        #print(data[colName])
+        data[colName] = le.fit_transform(data[colName])
+    data = preprocessing.scale(data)
+    return data
+    
+#prediction for SCHOOL
+X = data.drop(['school'], axis=1)
+X = convert(X)
+Y = data['school']
+
+XNew = SelectKBest(f_classif, k=10).fit_transform(X, Y)
+
+performanceK, performance = log(XNew, Y)
+print("Performance: {}, Kfold_performance: {}".format(performance, sum(performanceK)/len(performanceK)))
+
+#prediction for G3
+Y = data[data.columns[-1]]
+X = data.drop(['G3'], axis=1)
+X = convert(X)
+Y = data['G3']
+s = SelectKBest(f_classif, k=5)
+XNew = s.fit_transform(X, Y)
+performanceK, performance = log(XNew, Y)
+print("Performance: {}, Kfold_performance: {}".format(performance, sum(performanceK)/len(performanceK)))
+
+#prediction for G3
+Y = data[data.columns[-1]]
+X = data.drop(['G3'], axis=1)
+X = convert(X)
+Y = data['G3']
+s = SelectKBest(f_classif, k=5)
+XNew = s.fit_transform(X, Y)
+performanceK, performance = log(XNew, Y)
+print("Performance: {}, Kfold_performance: {}".format(performance, sum(performanceK)/len(performanceK)))
+
